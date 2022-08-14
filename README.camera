@@ -1,0 +1,28 @@
+
+Here are basic instructions for streaming the camera.
+
+# On raspberry Pi:
+libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.02:8888
+
+# On Mac:
+ffplay tcp://192.168.1.250:8888 -vf "setpts=N/30" -fflags nobuffer -flags low_delay -framedrop
+
+
+-------------------------------------------------------------
+These are the initial working instructions that use VLC to display.
+This will display the stream, but it will be a bit choppy
+with a time lag of > 1 second. 
+
+
+# On raspberry pi:
+libcamera-vid -t 0 -n --inline --listen -o tcp://0.0.0.0:8888
+
+
+
+# On Mac:
+1. Open VLC and select File->Open Network ... 
+2. Enter
+       tcp/h264://192.168.1.250:8888
+   then click "Open" 
+
+
