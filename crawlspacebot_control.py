@@ -119,8 +119,8 @@ else:
 			# Tank treads
 			last_treadL = treadL
 			last_treadR = treadR
-			treadL = state['left_joy_V']
-			treadR = state['right_joy_V']
+			treadL = -state['left_joy_V']
+			treadR = -state['right_joy_V']
 			if (last_treadL!=treadL) or (last_treadR!=treadR):
 				socket.send_string('set_tread_power %f %f' % (treadL, treadR))
 				message = socket.recv_string()
