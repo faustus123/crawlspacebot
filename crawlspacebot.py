@@ -3,11 +3,18 @@
 #  Run this on the robot (raspberry pi)
 #
 
+import os
 import zmq
 import time
 import sys
 import subprocess
 import threading
+
+# Reduces the jitter on the servos
+os.environ["GPIOZERO_PIN_FACTORY"] = "pigpio"
+os.system("sudo pigpiod")
+
+
 import RPi.GPIO as GPIO
 from gpiozero import Servo
 
