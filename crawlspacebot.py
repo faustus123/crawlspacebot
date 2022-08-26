@@ -32,60 +32,82 @@ servoH.mid()
 servoV.mid()
 
 # tread DC motor control
-pinA = 23
-pinB = 24
-pinC = 27
-pinD = 22
+pin_ENA = 18 # grey    <--|
+pin_IN1 = 23 # white      |-- Left
+pin_IN2 = 24 # black   <--|
 
-freq = 7500  # cycle frequency
+pin_IN3 = 25 # brown   <--|
+pin_IN4 = 12 # red        |-- Right
+pin_ENB = 16 # orange  <--|
+
+
+freq = 2000  # cycle frequency
 period = 1.0/freq
 
 power_left  = 0.0
 power_right = 0.0
+motors_stopped = True
 
 GPIO.setmode( GPIO.BCM )
-GPIO.setup( pinA, GPIO.OUT )
-GPIO.setup( pinB, GPIO.OUT )
-GPIO.setup( pinC, GPIO.OUT )
-GPIO.setup( pinD, GPIO.OUT )
+GPIO.setup( pin_ENA, GPIO.OUT )
+GPIO.setup( pin_IN1, GPIO.OUT )
+GPIO.setup( pin_IN2, GPIO.OUT )
+GPIO.setup( pin_IN3, GPIO.OUT )
+GPIO.setup( pin_IN4, GPIO.OUT )
+GPIO.setup( pin_ENB, GPIO.OUT )
 
-GPIO.output(pinA, False)
-GPIO.output(pinB, False)
-GPIO.output(pinC, False)
-GPIO.output(pinD, False)
+GPIO.output(pin_ENA, False)
+GPIO.output(pin_IN1, False)
+GPIO.output(pin_IN2, False)
+GPIO.output(pin_IN3, False)
+GPIO.output(pin_IN4, False)
+GPIO.output(pin_ENB, False)
 
 def PWM_left_update_thread():
 	while not Done:
+		if motors_stopped:
+			GPIO.output(pin_IN1, False)
+			GPIO.output(pin_IN2, False)
+			GPIO.output(pin_ENA, False)
+			time.sleep( period )
+			continue
 
 		if power_left>0.0:
-			pinL_gnd = pinB
-			pinL_pwm = pinA
+			pinL_lo = pin_IN1
+			pinL_hi = pin_IN2
 		else:
-			pinL_gnd = pinA
-			pinL_pwm = pinB
+			pinL_lo = pin_IN2
+			pinL_hi = pin_IN1
 		dutyL = abs(power_left)
 
-		GPIO.output(pinL_gnd, False)
-		GPIO.output(pinL_pwm, True)
+		GPIO.output(pinL_lo, False)
+		GPIO.output(pinL_hi, True)
+		GPIO.output(pin_ENA, True)
 		time.sleep( period*dutyL );
-		GPIO.output(pinL_pwm, False)
+		GPIO.output(pin_ENA, False)
 		time.sleep( period*(1.0-dutyL) );
 
 def PWM_right_update_thread():
 	while not Done:
+		if motors_stopped:
+			GPIO.output(pinA, False)
+			GPIO.output(pinB, False)
+			time.sleep( period )
+			continue
 
 		if power_right>0.0:
-			pinR_gnd = pinD
-			pinR_pwm = pinC
+			pinR_lo = pin_IN3
+			pinR_hi = pin_IN4
 		else:
-			pinR_gnd = pinC
-			pinR_pwm = pinD
+			pinR_lo = pin_IN4
+			pinR_hi = pin_IN3
 		dutyR = abs(power_right)
 
-		GPIO.output(pinR_gnd, False)
-		GPIO.output(pinR_pwm, True)
+		GPIO.output(pinR_lo, False)
+		GPIO.output(pinR_hi, True)
+		GPIO.output(pin_ENB, True)
 		time.sleep( period*dutyR );
-		GPIO.output(pinR_pwm, False)
+		GPIO.output(pin_ENB, False)
 		time.sleep( period*(1.0-dutyR) );
 
 
@@ -163,11 +185,21 @@ while not Done:
 		servoH.value = float(angleH)
 		servoV.value = float(angleV)
 
+	elif command.startswith('stop_camera_servos'):
+		mess = 'Stopping camera servos'
+		servoH.detach()
+		servoV.detach()
+
 	elif command.startswith('set_tread_power'):
 		[powerL, powerR] = command.split()[1:]
 		mess = 'Setting tread power to ' + powerL + ', ' + powerR
 		power_left  = float(powerL)
 		power_right = float(powerR)
+		motors_stopped = False
+
+	elif command.startswith('stop_motors'):
+		motors_stopped = True
+		mess = 'Stopping motors'
 
 	else:
 		mess = 'Unknown command: ' + command
