@@ -90,17 +90,18 @@ def PWM_left_update_thread():
 def PWM_right_update_thread():
 	while not Done:
 		if motors_stopped:
-			GPIO.output(pinA, False)
-			GPIO.output(pinB, False)
+			GPIO.output(pin_IN3, False)
+			GPIO.output(pin_IN4, False)
+			GPIO.output(pin_ENB, False)
 			time.sleep( period )
 			continue
 
 		if power_right>0.0:
-			pinR_lo = pin_IN3
-			pinR_hi = pin_IN4
-		else:
 			pinR_lo = pin_IN4
 			pinR_hi = pin_IN3
+		else:
+			pinR_lo = pin_IN3
+			pinR_hi = pin_IN4
 		dutyR = abs(power_right)
 
 		GPIO.output(pinR_lo, False)
