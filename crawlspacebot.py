@@ -26,6 +26,9 @@ Done = False
 pinH = 20
 pinV = 21
 
+# Laser control
+pinLaser = 19
+
 servoH = Servo( pinH )
 servoV = Servo( pinV )
 servoH.mid()
@@ -62,6 +65,10 @@ GPIO.output(pin_IN2, False)
 GPIO.output(pin_IN3, False)
 GPIO.output(pin_IN4, False)
 GPIO.output(pin_ENB, False)
+
+GPIO.setup( pinLaser, GPIO.OUT )
+GPIO.output(pinLaser, True)  # high is off
+
 
 def PWM_left_update_thread():
 	while not Done:
@@ -124,6 +131,7 @@ pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
 pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
 pwm_left_thread.start()
 pwm_right_thread.start()
+last_tread_thread_start_time = time.time()
 
 #=============================================================================
 
@@ -201,6 +209,32 @@ while not Done:
 	elif command.startswith('stop_motors'):
 		motors_stopped = True
 		mess = 'Stopping motors'
+
+	elif command.startswith('set_laser_on'):
+		GPIO.output(pinLaser, False)
+		mess = "Laser on"
+
+	elif command.startswith('set_laser_off'):
+		GPIO.output(pinLaser, True)
+		mess = "Laser off"
+
+	elif command.startswith('reset_tread_threads'):
+		now = time.time()
+		if now - last_tread_thread_start_time < 3.0:
+			mess = 'Tread threads restarted too recently. Ignoring'
+		else:
+			# tell threads to stop by setting Done to True, then join them,
+			# then set Done back to False and restart them.
+			Done = True
+			pwm_left_thread.join()
+			pwm_right_thread.join()
+			Done = False
+			pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
+			pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
+			pwm_left_thread.start()
+			pwm_right_thread.start()
+			last_tread_thread_start_time = time.time()
+			mess = "Tread threads restarted"
 
 	else:
 		mess = 'Unknown command: ' + command
