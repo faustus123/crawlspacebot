@@ -29,6 +29,9 @@ pinV = 21
 # Laser control
 pinLaser = 19
 
+# Headelight control
+pinHeadlight = 17
+
 servoH = Servo( pinH )
 servoV = Servo( pinV )
 servoH.mid()
@@ -50,6 +53,8 @@ period = 1.0/freq
 power_left  = 0.0
 power_right = 0.0
 motors_stopped = True
+headlight_power = 0.5
+headlight_on = False
 
 GPIO.setmode( GPIO.BCM )
 GPIO.setup( pin_ENA, GPIO.OUT )
@@ -69,6 +74,9 @@ GPIO.output(pin_ENB, False)
 GPIO.setup( pinLaser, GPIO.OUT )
 GPIO.output(pinLaser, True)  # high is off
 
+GPIO.setup( pinHeadlight, GPIO.OUT )
+GPIO.output(pinHeadlight, False)  # start with headlight off
+
 
 def PWM_left_update_thread():
 	while not Done:
@@ -86,6 +94,7 @@ def PWM_left_update_thread():
 			pinL_lo = pin_IN2
 			pinL_hi = pin_IN1
 		dutyL = abs(power_left)
+		if dutyL > 1.0 : dutyL = 1.0
 
 		GPIO.output(pinL_lo, False)
 		GPIO.output(pinL_hi, True)
@@ -110,6 +119,7 @@ def PWM_right_update_thread():
 			pinR_lo = pin_IN3
 			pinR_hi = pin_IN4
 		dutyR = abs(power_right)
+		if dutyR > 1.0 : dutyR = 1.0
 
 		GPIO.output(pinR_lo, False)
 		GPIO.output(pinR_hi, True)
@@ -117,6 +127,24 @@ def PWM_right_update_thread():
 		time.sleep( period*dutyR );
 		GPIO.output(pin_ENB, False)
 		time.sleep( period*(1.0-dutyR) );
+
+def PWM_headlight_update_thread():
+	global headlight_power
+	while not Done:
+		if not headlight_on:
+			GPIO.output(pinHeadlight, False)
+			time.sleep( period )
+			continue
+
+		if headlight_power > 1.0 : headlight_power = 1.0
+		if headlight_power < 0.0 : headlight_power = 0.0
+		duty = headlight_power
+
+		GPIO.output(pinHeadlight, True)
+		time.sleep( period*duty );
+		if duty < 1.0:
+			GPIO.output(pinHeadlight, False)
+			time.sleep( period*(1.0-duty) );
 
 
 def move( powerL, powerR, t ):
@@ -127,8 +155,10 @@ def move( powerL, powerR, t ):
 	power_left  = 0.0
 	power_right = 0.0
 
+pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
 pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
 pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
+pwm_headlight_thread.start()
 pwm_left_thread.start()
 pwm_right_thread.start()
 last_tread_thread_start_time = time.time()
@@ -218,6 +248,18 @@ while not Done:
 		GPIO.output(pinLaser, True)
 		mess = "Laser off"
 
+	elif command.startswith('set_headlight_on'):
+		headlight_on = True
+		mess = "Headlight on"
+
+	elif command.startswith('set_headlight_off'):
+		headlight_on = False
+		mess = "Headlight off"
+
+	elif command.startswith('set_headlight_power'):
+		headlight_power = float(command.split()[1])
+		mess = "Headlight power set to %f" % headlight_power
+
 	elif command.startswith('reset_tread_threads'):
 		now = time.time()
 		if now - last_tread_thread_start_time < 3.0:
@@ -226,11 +268,14 @@ while not Done:
 			# tell threads to stop by setting Done to True, then join them,
 			# then set Done back to False and restart them.
 			Done = True
+			pwm_headlight_thread.join()
 			pwm_left_thread.join()
 			pwm_right_thread.join()
 			Done = False
+			pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
 			pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
 			pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
+			pwm_headlight_thread.start()
 			pwm_left_thread.start()
 			pwm_right_thread.start()
 			last_tread_thread_start_time = time.time()
@@ -243,6 +288,7 @@ while not Done:
 	socket.send_string(mess)
 
 # Cleanup
+pwm_headlight_thread.join()
 pwm_left_thread.join()
 pwm_right_thread.join()
 GPIO.cleanup()
