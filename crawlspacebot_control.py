@@ -10,13 +10,16 @@ import os
 import subprocess
 import hid
 
-host = "192.168.1.250"
+host = "192.168.1.249"
 port = "71400"
 
-camera_angleH = 0.0
-camera_angleV = 0.0
+camera_angleH_center =  0.126
+camera_angleV_center = -0.022
+camera_angleH = camera_angleH_center
+camera_angleV = camera_angleV_center
 treadL = 0.0;
 treadR = 0.0
+laserOn = False
 
 def LogitechReportToState( report ):
 	state = {}
@@ -73,7 +76,7 @@ print(message)
 # Open video window to receive stream
 # n.b. For some reason, running this command with Popen returns a message about
 # not being able to connect to server and will not open the display window.
-cmd = 'ffplay tcp://192.168.1.250:71401 -vf "setpts=N/30" -fflags nobuffer -flags low_delay -framedrop'.split()
+cmd = 'ffplay tcp://192.168.1.250:7140 -vf "setpts=N/30" -fflags nobuffer -flags low_delay -framedrop'.split()
 print('Launch video monitor with:')
 print('   ' + ' '.join(cmd))
 video_stream_proc = None
@@ -111,9 +114,20 @@ else:
 			if state['dpad_right']: camera_angleH -= 0.002
 			camera_angleV = max(-1.0, min( camera_angleV, 1.0))
 			camera_angleH = max(-1.0, min( camera_angleH, 1.0))
-			if state['back']: camera_angleV = camera_angleH = 0.0
+			if state['back']:
+				camera_angleV = camera_angleV_center
+				camera_angleH = camera_angleH_center
 			if (last_camera_angleV!=camera_angleV) or (last_camera_angleH!=camera_angleH):
 				socket.send_string('set_camera_angles %f %f' % (camera_angleH, camera_angleV))
+				message = socket.recv_string()
+			
+			# Laser
+			if state['button_B'] != laserOn :
+				laserOn = state['button_B']
+				if laserOn:
+					socket.send_string('set_laser_on')
+				else:
+					socket.send_string('set_laser_off')
 				message = socket.recv_string()
 			
 			# Tank treads
@@ -121,11 +135,48 @@ else:
 			last_treadR = treadR
 			treadL = -state['left_joy_V']
 			treadR = -state['right_joy_V']
+			
+			# Deadband so wheels don't turn when joystick close to middle
+			deadband = 0.1
+			if abs(treadL) < deadband : treadL = 0.0
+			if abs(treadR) < deadband : treadR = 0.0
+			
+			# Left trigger forces motors to sync so we go straight forward/backward
+			if state['trigger_left']:
+				asym = treadR
+				treadR = treadL + asym
+				treadL = treadL - asym
+			
+			# Right trigger goes at fast speed. Otherwise, go slow
+			if not state['trigger_right']:
+				treadR = treadR / 4.0
+				treadL = treadL / 4.0
+			
+			# If tread power has changed since last time, send new values.
 			if (last_treadL!=treadL) or (last_treadR!=treadR):
-				socket.send_string('set_tread_power %f %f' % (treadL, treadR))
+				# If tread power for both is zero, tell PWM to stop
+				# Otherwise send new motor values
+				if (treadL==0.0) and (treadR==0.0):
+					socket.send_string('stop_motors')
+					message = socket.recv_string()
+				else:
+					socket.send_string('set_tread_power %f %f' % (treadL, treadR))
+					message = socket.recv_string()
+
+			# Stop all motors (stops sending PWM, motors will start as soon as new values sent)
+			if state['button_X']:
+				socket.send_string('stop_camera_servos')
+				message = socket.recv_string()
+				socket.send_string('stop_motors')
 				message = socket.recv_string()
 
-			#print(state)
+			# Tell tread threads to restart (in case one becomes non-responsive)
+			if state['start']:
+				socket.send_string('reset_tread_threads')
+				message = socket.recv_string()
+
+			if message : print(message)
+			message = None
 
 #for i in range(-100,101, 1):
 #	angleH = i/100.0
