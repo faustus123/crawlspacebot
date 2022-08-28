@@ -29,13 +29,20 @@ pinV = 21
 # Laser control
 pinLaser = 19
 
-# Headelight control
+# Headlight control
 pinHeadlight = 17
+
+# Emergency pusher
+pinEmergencyPusher = 22
 
 servoH = Servo( pinH )
 servoV = Servo( pinV )
 servoH.mid()
 servoV.mid()
+
+# Emergency pusher is type UCTRONICS 270 degree servo.
+# it has a min/max pulse width range of 0.5/2.5 ms
+servoEmergencyPusher = Servo( pinEmergencyPusher, min_pulse_width=0.0005, max_pulse_width=0.0025, initial_value=-0.9 )
 
 # tread DC motor control
 pin_ENA = 18 # grey    <--|
@@ -228,6 +235,15 @@ while not Done:
 		mess = 'Stopping camera servos'
 		servoH.detach()
 		servoV.detach()
+
+	elif command.startswith('set_emergency_pusher_angle'):
+		angle_emergency_pusher = command.split()[1]
+		mess = 'Setting emergency pusher angle to ' + angle_emergency_pusher
+		servoEmergencyPusher.value = float(angle_emergency_pusher)
+
+	elif command.startswith('stop_emergency_pusher_servo'):
+		mess = 'Stopping emergency pusher servo'
+		servoEmergencyPusher.detach()
 
 	elif command.startswith('set_tread_power'):
 		[powerL, powerR] = command.split()[1:]
