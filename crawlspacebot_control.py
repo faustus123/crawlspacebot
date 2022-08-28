@@ -20,6 +20,11 @@ camera_angleV = camera_angleV_center
 treadL = 0.0;
 treadR = 0.0
 laserOn = False
+headlightOn = False
+headlightPower = 0.5
+emergency_pusher_parked = -0.89
+emergency_pusher_full   = 0.65
+emergency_pusher_angle  = emergency_pusher_parked
 
 def LogitechReportToState( report ):
 	state = {}
@@ -62,6 +67,10 @@ print('Recieved: "' + message + '"')
 
 # Initialize camera angles
 socket.send_string('set_camera_angles %f %f' % (camera_angleH, camera_angleV))
+message = socket.recv_string()
+
+# Initialize emergency pusher
+socket.send_string('set_emergency_pusher %f' % (emergency_pusher_angle))
 message = socket.recv_string()
 
 # Initialize treads to stopped
@@ -120,7 +129,20 @@ else:
 			if (last_camera_angleV!=camera_angleV) or (last_camera_angleH!=camera_angleH):
 				socket.send_string('set_camera_angles %f %f' % (camera_angleH, camera_angleV))
 				message = socket.recv_string()
-			
+
+			# Emergency pusher angle
+			last_emergency_pusher_angle = emergency_pusher_angle
+			if state['button_Y']: emergency_pusher_angle += 0.03
+			if state['button_A']: emergency_pusher_angle -= 0.03
+			emergency_pusher_angle = max(emergency_pusher_parked, min( emergency_pusher_angle, emergency_pusher_full))
+			if last_emergency_pusher_angle != emergency_pusher_angle :
+				socket.send_string('set_emergency_pusher_angle %f' % (emergency_pusher_angle))
+				message = socket.recv_string()
+				time.sleep(0.020)
+				if emergency_pusher_angle == emergency_pusher_parked:
+					socket.send_string('stop_emergency_pusher_servo')
+					message = socket.recv_string()
+
 			# Laser
 			if state['button_B'] != laserOn :
 				laserOn = state['button_B']
@@ -128,6 +150,23 @@ else:
 					socket.send_string('set_laser_on')
 				else:
 					socket.send_string('set_laser_off')
+				message = socket.recv_string()
+			
+			# Headlight
+			if state['R3'] and not headlightOn:
+				socket.send_string('set_headlight_on')
+				headlightOn = True
+				message = socket.recv_string()
+			if state['L3'] and headlightOn:
+				socket.send_string('set_headlight_off')
+				headlightOn = False
+				message = socket.recv_string()
+			last_headlightPower = headlightPower
+			if state['bumper_right']: headlightPower += 0.01
+			if state['bumper_left' ]: headlightPower -= 0.01
+			headlightPower = max(0.0, min( headlightPower, 1.0))
+			if headlightPower != last_headlightPower:
+				socket.send_string('set_headlight_power %f' % headlightPower)
 				message = socket.recv_string()
 			
 			# Tank treads
@@ -170,10 +209,18 @@ else:
 				socket.send_string('stop_motors')
 				message = socket.recv_string()
 
-			# Tell tread threads to restart (in case one becomes non-responsive)
+			# Tell tread threads and video to restart (in case one becomes non-responsive)
 			if state['start']:
 				socket.send_string('reset_tread_threads')
 				message = socket.recv_string()
+				print(message)
+				socket.send_string('stop_video_stream')
+				message = socket.recv_string()
+				print(message)
+				time.sleep(1.5)
+				socket.send_string('start_video_stream')
+				message = socket.recv_string()
+				
 
 			if message : print(message)
 			message = None
