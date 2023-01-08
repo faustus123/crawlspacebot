@@ -187,7 +187,8 @@ video_stream_proc = None
 def StartVideoStream():
 	global video_stream_proc
 	subprocess.run('killall -9 libcamera-vid'.split()) # make sure stream is not running from someone else and don't be nice about it!
-	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.0:7140'.split()
+#	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.0:7140'.split()
+	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 480 --framerate 12 -o tcp://0.0.0.0:7140'.split()
 	print('Starting video stream with command:')
 	print('   ' + ' '.join(cmd))
 	video_stream_proc = subprocess.Popen( cmd )
