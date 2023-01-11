@@ -10,11 +10,16 @@ import os
 import subprocess
 import hid
 
-host = "192.168.1.249"
+host = "192.168.1.240"
 port = "71400"
 
-camera_angleH_center =  0.126
-camera_angleV_center = -0.022
+if len(sys.argv) > 1:
+	host = sys.argv[1]
+	print("Setting host to: %s" % host)
+
+
+camera_angleH_center =  0.208
+camera_angleV_center = -0.310
 camera_angleH = camera_angleH_center
 camera_angleV = camera_angleV_center
 treadL = 0.0;
@@ -85,9 +90,9 @@ print(message)
 # Open video window to receive stream
 # n.b. For some reason, running this command with Popen returns a message about
 # not being able to connect to server and will not open the display window.
-cmd = 'ffplay tcp://192.168.1.250:7140 -vf "setpts=N/30" -fflags nobuffer -flags low_delay -framedrop'.split()
-print('Launch video monitor with:')
-print('   ' + ' '.join(cmd))
+cmd = 'ffplay tcp://'+host+':7140 -vf "setpts=N/30" -fflags nobuffer -flags low_delay -framedrop'
+print('Please launch video monitor with:')
+print('   ' + ' '.join(cmd.split()))
 video_stream_proc = None
 #video_stream_proc = subprocess.Popen(cmd)
 
