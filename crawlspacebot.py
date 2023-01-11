@@ -200,8 +200,10 @@ def onboard_display_update_thread():
 		# Shell scripts for system monitoring from here : https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
 		cmd = "hostname -I"
 		IP = subprocess.check_output(cmd, shell = True )
-		cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
+		#cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
+		cmd = "top -bn1 | grep Cpu | awk '{printf \"%.2f\", $(NF-9)}'"
 		CPU = subprocess.check_output(cmd, shell = True )
+		CPU = "CPU: %.2f%%" % 100.0-float(CPU)
 		cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
 		MemUsage = subprocess.check_output(cmd, shell = True )
 		cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
