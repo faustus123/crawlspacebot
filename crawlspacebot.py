@@ -100,13 +100,15 @@ disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST) # 128x32 display with hardware I
 disp.begin()
 disp.clear()
 disp.display()
+padding=-2
+top = padding
 width = disp.width
 height = disp.height
 image = Image.new('1', (width, height)) # Create blank image for drawing. '1' for 1-bit color.
 draw = ImageDraw.Draw(image) # Get drawing object to draw on image.
 draw.rectangle((0,0,width,height), outline=0, fill=0) # Clear screen
 font = ImageFont.load_default() # Load default font.
-draw.text((x, top+8),  '... starting up ....', font=font, fill=255)
+draw.text((10, top+8),  '... starting up ....', font=font, fill=255)
 disp.image(image)
 disp.display()
 
@@ -196,7 +198,7 @@ def onboard_display_update_thread():
 		draw.rectangle((0,0,width,height), outline=0, fill=0)
 
 		# Shell scripts for system monitoring from here : https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
-		cmd = "hostname -I |cut -f 2 -d ' '"
+		cmd = "hostname -I"
 		IP = subprocess.check_output(cmd, shell = True )
 		cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
 		CPU = subprocess.check_output(cmd, shell = True )
