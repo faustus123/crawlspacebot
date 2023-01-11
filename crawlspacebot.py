@@ -10,6 +10,13 @@ import sys
 import subprocess
 import threading
 
+import Adafruit_GPIO.SPI as SPI
+import Adafruit_SSD1306
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+
+
 # Reduces the jitter on the servos
 os.environ["GPIOZERO_PIN_FACTORY"] = "pigpio"
 os.system("sudo pigpiod")
@@ -83,6 +90,25 @@ GPIO.output(pinLaser, True)  # high is off
 
 GPIO.setup( pinHeadlight, GPIO.OUT )
 GPIO.output(pinHeadlight, False)  # start with headlight off
+
+# Initialize onboard display
+RST = None     # on the PiOLED this pin isnt used
+DC = 23
+SPI_PORT = 0
+SPI_DEVICE = 0
+disp = Adafruit_SSD1306.SSD1306_128_32(rst=RST) # 128x32 display with hardware I2C:
+disp.begin()
+disp.clear()
+disp.display()
+width = disp.width
+height = disp.height
+image = Image.new('1', (width, height)) # Create blank image for drawing. '1' for 1-bit color.
+draw = ImageDraw.Draw(image) # Get drawing object to draw on image.
+draw.rectangle((0,0,width,height), outline=0, fill=0) # Clear screen
+font = ImageFont.load_default() # Load default font.
+draw.text((x, top+8),  '... starting up ....', font=font, fill=255)
+disp.image(image)
+disp.display()
 
 
 def PWM_left_update_thread():
@@ -162,12 +188,54 @@ def move( powerL, powerR, t ):
 	power_left  = 0.0
 	power_right = 0.0
 
+def onboard_display_update_thread():
+	global raspi_status
+
+	while not Done:
+		# Draw a black filled box to clear the image.
+		draw.rectangle((0,0,width,height), outline=0, fill=0)
+
+		# Shell scripts for system monitoring from here : https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
+		cmd = "hostname -I |cut -f 2 -d ' '"
+		IP = subprocess.check_output(cmd, shell = True )
+		cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
+		CPU = subprocess.check_output(cmd, shell = True )
+		cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
+		MemUsage = subprocess.check_output(cmd, shell = True )
+		cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
+		Disk = subprocess.check_output(cmd, shell = True )
+		cmd = "vcgencmd measure_temp |cut -f 2 -d '='"
+		temp = subprocess.check_output(cmd, shell = True )
+		
+		# Copy lines into global list so it can be sent to remote host upon request
+		raspi_status = [
+			"IP: " + str(IP,'utf-8'),
+			str(CPU,'utf-8') + " " + str(temp,'utf-8'),
+			str(MemUsage,'utf-8'),
+			str(Disk,'utf-8')
+		]
+
+		# Write all lines of text.
+		x=0
+		y=top
+		for line in raspi_status:
+			draw.text((x, y),  line, font=font, fill=255)
+			y += 8
+
+		# Display image.
+		disp.image(image)
+		disp.display()
+		time.sleep(1.)
+
+
 pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
 pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
 pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
+onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
 pwm_headlight_thread.start()
 pwm_left_thread.start()
 pwm_right_thread.start()
+onboard_display_thread.start()
 last_tread_thread_start_time = time.time()
 
 #=============================================================================
@@ -288,13 +356,16 @@ while not Done:
 			pwm_headlight_thread.join()
 			pwm_left_thread.join()
 			pwm_right_thread.join()
+			onboard_display_thread.join()
 			Done = False
 			pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
 			pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
 			pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
+			onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
 			pwm_headlight_thread.start()
 			pwm_left_thread.start()
 			pwm_right_thread.start()
+			onboard_display_thread.start()
 			last_tread_thread_start_time = time.time()
 			mess = "Tread threads restarted"
 
@@ -308,4 +379,5 @@ while not Done:
 pwm_headlight_thread.join()
 pwm_left_thread.join()
 pwm_right_thread.join()
+onboard_display_thread.join()
 GPIO.cleanup()
