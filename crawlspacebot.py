@@ -234,6 +234,7 @@ def onboard_display_update_thread():
 
 
 def video_stream_monitoring_thread():
+	global	video_stream_proc
 	while not Done:
 		if video_stream_proc:
 			processRunning = video_stream_proc.poll() is None
@@ -243,18 +244,40 @@ def video_stream_monitoring_thread():
 		time.sleep(3) # only check every 3 seconds (also prevents restarting too often)
 
 
+# Several threads run asynchronously to handle various things
+all_threads = []
+all_threads.append( {'name=headlight', 'target'=PWM_headlight_update_thread   , 'proc'=None})
+all_threads.append( {'name=left'     , 'target'=PWM_left_update_thread        , 'proc'=None})
+all_threads.append( {'name=right'    , 'target'=PWM_right_update_thread       , 'proc'=None})
+all_threads.append( {'name=display'  , 'target'=onboard_display_update_thread , 'proc'=None})
+all_threads.append( {'name=videomon' , 'target'=video_stream_monitoring_thread, 'proc'=None})
 
-pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
-pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
-pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
-onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
-video_stream_thread = threading.Thread( target=video_stream_monitoring_thread )
-pwm_headlight_thread.start()
-pwm_left_thread.start()
-pwm_right_thread.start()
-onboard_display_thread.start()
-video_stream_thread.start()
-last_tread_thread_start_time = time.time()
+def StartAllThreads():
+	global last_tread_thread_start_time
+	for t in all_threads:
+		t['proc'] = threading.Thread( target=t['target'] )
+		print('Starting thread for '+t['name'])
+		t['proc'].start()
+	last_tread_thread_start_time = time.time()
+
+def StopAllThreads():
+	print('Stopping all threads ...')
+	Done = True
+	for t in all_threads:
+		print('  Joining thread for '+t['name'])
+		t['proc'].join()
+
+#pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
+#pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
+#pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
+#onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
+#video_stream_thread = threading.Thread( target=video_stream_monitoring_thread )
+#pwm_headlight_thread.start()
+#pwm_left_thread.start()
+#pwm_right_thread.start()
+#onboard_display_thread.start()
+#video_stream_thread.start()
+#last_tread_thread_start_time = time.time()
 
 #=============================================================================
 
@@ -373,25 +396,9 @@ while not Done:
 		else:
 			# tell threads to stop by setting Done to True, then join them,
 			# then set Done back to False and restart them.
-			Done = True
-			pwm_headlight_thread.join()
-			pwm_left_thread.join()
-			pwm_right_thread.join()
-			onboard_display_thread.join()
-			video_stream_thread.join()
-			Done = False
-			pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
-			pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
-			pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
-			onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
-			video_stream_thread = threading.Thread( target=video_stream_monitoring_thread )
-			pwm_headlight_thread.start()
-			pwm_left_thread.start()
-			pwm_right_thread.start()
-			onboard_display_thread.start()
-			video_stream_thread.start()
-			last_tread_thread_start_time = time.time()
-			mess = "Tread threads restarted"
+			StopAllThreads();
+			StartAllThreads();
+			mess = "Threads restarted"
 
 	else:
 		mess = 'Unknown command: ' + command
@@ -400,8 +407,5 @@ while not Done:
 	socket.send_string(mess)
 
 # Cleanup
-pwm_headlight_thread.join()
-pwm_left_thread.join()
-pwm_right_thread.join()
-onboard_display_thread.join()
+StopAllThreads();
 GPIO.cleanup()
