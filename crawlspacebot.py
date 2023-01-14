@@ -233,7 +233,7 @@ def onboard_display_update_thread():
 		time.sleep(1.)
 
 
-def video_stream_monitoring_thread:
+def video_stream_monitoring_thread():
 	while not Done:
 		if video_stream_proc:
 			if video_stream_proc.poll() not None:
