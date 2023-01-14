@@ -69,6 +69,7 @@ power_right = 0.0
 motors_stopped = True
 headlight_power = 0.5
 headlight_on = False
+raspi_status = []
 
 GPIO.setmode( GPIO.BCM )
 GPIO.setup( pin_ENA, GPIO.OUT )
@@ -232,14 +233,26 @@ def onboard_display_update_thread():
 		time.sleep(1.)
 
 
+def video_stream_monitoring_thread:
+	while not Done:
+		if video_stream_proc:
+			if video_stream_proc.poll() not None:
+				# Video stream not running. Restart it.
+				StartVideoStream()
+		time.sleep(3) # only check every 3 seconds (also prevents restarting too often)
+
+
+
 pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
 pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
 pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
 onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
+video_stream_thread = threading.Thread( target=video_stream_monitoring_thread )
 pwm_headlight_thread.start()
 pwm_left_thread.start()
 pwm_right_thread.start()
 onboard_display_thread.start()
+video_stream_thread.start()
 last_tread_thread_start_time = time.time()
 
 #=============================================================================
@@ -349,6 +362,9 @@ while not Done:
 		headlight_power = float(command.split()[1])
 		mess = "Headlight power set to %f" % headlight_power
 
+	elif command.startswith('get_raspi_status'):
+		mess = '\n'.join(raspi_status)
+
 	elif command.startswith('reset_tread_threads'):
 		now = time.time()
 		if now - last_tread_thread_start_time < 3.0:
@@ -361,15 +377,18 @@ while not Done:
 			pwm_left_thread.join()
 			pwm_right_thread.join()
 			onboard_display_thread.join()
+			video_stream_thread.join()
 			Done = False
 			pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
 			pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
 			pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
 			onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
+			video_stream_thread = threading.Thread( target=video_stream_monitoring_thread )
 			pwm_headlight_thread.start()
 			pwm_left_thread.start()
 			pwm_right_thread.start()
 			onboard_display_thread.start()
+			video_stream_thread.start()
 			last_tread_thread_start_time = time.time()
 			mess = "Tread threads restarted"
 
