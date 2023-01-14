@@ -236,8 +236,8 @@ def onboard_display_update_thread():
 def video_stream_monitoring_thread():
 	while not Done:
 		if video_stream_proc:
-			poll = video_stream_proc.poll()
-			if poll not None:
+			processRunning = video_stream_proc.poll() is None
+			if not processRunning:
 				# Video stream not running. Restart it.
 				StartVideoStream()
 		time.sleep(3) # only check every 3 seconds (also prevents restarting too often)
