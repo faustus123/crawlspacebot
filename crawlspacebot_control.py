@@ -108,12 +108,16 @@ for d in hid.enumerate():
 		vendor_id  = int(d['vendor_id' ])
 		product_id = int(d['product_id'])
 		print('Found Logictech gamepad: vendor_id:0x%x product_id:0x%x' % (vendor_id, product_id))
-		gamepad = hid.device()
-		gamepad.open(vendor_id, product_id)
-		gamepad.set_nonblocking(True)
+		gamepad = hid.Device(vid=vendor_id, pid=product_id)
+		gamepad.nonblocking = True
+#		gamepad = hid.device()
+#		gamepad.open(vendor_id, product_id)
+#		gamepad.set_nonblocking(True)
 if not gamepad:
 	print('Unable to find gamepad!')
 else:
+	last_R3 = False
+	last_L3 = False
 	while True:
 		report = gamepad.read(512)
 		if report:
@@ -130,9 +134,16 @@ else:
 			camera_angleV = max(-1.0, min( camera_angleV, 1.0))
 			camera_angleH = max(-1.0, min( camera_angleH, 1.0))
 			if state['back']:
+				# Remember current camera angles as "center"
+				camera_angleV_center =  camera_angleV
+				camera_angleH_center =  camera_angleH
+			if (last_L3 != state['L3']) and (last_L3 == False):
+				# Move camera angles to "center"
 				camera_angleV = camera_angleV_center
 				camera_angleH = camera_angleH_center
+			last_L3 = state['L3']
 			if (last_camera_angleV!=camera_angleV) or (last_camera_angleH!=camera_angleH):
+				# Send command to robot iff camera angles have changed
 				socket.send_string('set_camera_angles %f %f' % (camera_angleH, camera_angleV))
 				message = socket.recv_string()
 
@@ -159,14 +170,22 @@ else:
 				message = socket.recv_string()
 			
 			# Headlight
-			if state['R3'] and not headlightOn:
-				socket.send_string('set_headlight_on')
-				headlightOn = True
+			if (last_R3 != state['R3']) and (last_R3 == False):
+				headlightOn = not headlightOn
+				if headlightOn:
+					socket.send_string('set_headlight_on')
+				else:
+					socket.send_string('set_headlight_off')
 				message = socket.recv_string()
-			if state['L3'] and headlightOn:
-				socket.send_string('set_headlight_off')
-				headlightOn = False
-				message = socket.recv_string()
+			last_R3 = state['R3']
+#			if state['R3'] and not headlightOn:
+#				socket.send_string('set_headlight_on')
+#				headlightOn = True
+#				message = socket.recv_string()
+#			if state['L3'] and headlightOn:
+#				socket.send_string('set_headlight_off')
+#				headlightOn = False
+#				message = socket.recv_string()
 			last_headlightPower = headlightPower
 			if state['bumper_right']: headlightPower += 0.01
 			if state['bumper_left' ]: headlightPower -= 0.01
