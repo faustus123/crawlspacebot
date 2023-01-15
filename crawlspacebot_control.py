@@ -90,7 +90,8 @@ print(message)
 # Open video window to receive stream
 # n.b. For some reason, running this command with Popen returns a message about
 # not being able to connect to server and will not open the display window.
-cmd = 'ffplay tcp://'+host+':7140 -vf "setpts=N/30" -fflags nobuffer -flags low_delay -framedrop'
+# cmd = 'ffplay tcp://'+host+':7140 -vf "setpts=N/30" -fflags nobuffer -flags low_delay -framedrop'
+cmd = 'ffplay tcp://'+host+':7140 -fflags nobuffer -flags low_delay -framedrop'
 print('Please launch video monitor with:')
 print('   ' + ' '.join(cmd.split()))
 video_stream_proc = None
