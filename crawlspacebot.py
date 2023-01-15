@@ -113,7 +113,25 @@ draw.text((10, top+8),  '... starting up ....', font=font, fill=255)
 disp.image(image)
 disp.display()
 
+# Video is streamed by separate process
+video_stream_proc = None
 
+#------------------------------
+# StartVideoStream
+#------------------------------
+def StartVideoStream():
+	global video_stream_proc
+	subprocess.run('killall -9 libcamera-vid'.split()) # make sure stream is not running from someone else and don't be nice about it!
+#	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.0:7140'.split()
+	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 --framerate 12 -o tcp://0.0.0.0:7140'.split()
+	print('Starting video stream with command:')
+	print('   ' + ' '.join(cmd))
+	video_stream_proc = subprocess.Popen( cmd )
+
+
+#------------------------------
+# PWM_left_update_thread
+#------------------------------
 def PWM_left_update_thread():
 	while not Done:
 		if motors_stopped:
@@ -139,6 +157,9 @@ def PWM_left_update_thread():
 		GPIO.output(pin_ENA, False)
 		time.sleep( period*(1.0-dutyL) );
 
+#------------------------------
+# PWM_right_update_thread
+#------------------------------
 def PWM_right_update_thread():
 	while not Done:
 		if motors_stopped:
@@ -164,6 +185,9 @@ def PWM_right_update_thread():
 		GPIO.output(pin_ENB, False)
 		time.sleep( period*(1.0-dutyR) );
 
+#------------------------------
+# PWM_headlight_update_thread
+#------------------------------
 def PWM_headlight_update_thread():
 	global headlight_power
 	while not Done:
@@ -183,6 +207,9 @@ def PWM_headlight_update_thread():
 			time.sleep( period*(1.0-duty) );
 
 
+#------------------------------
+# move
+#------------------------------
 def move( powerL, powerR, t ):
 	global power_left, power_right
 	power_left  = powerL
@@ -191,6 +218,9 @@ def move( powerL, powerR, t ):
 	power_left  = 0.0
 	power_right = 0.0
 
+#------------------------------
+# onboard_display_update_thread
+#------------------------------
 def onboard_display_update_thread():
 	global raspi_status
 
@@ -233,9 +263,13 @@ def onboard_display_update_thread():
 		time.sleep(1.)
 
 
+#------------------------------
+# video_stream_monitoring_thread
+#------------------------------
 def video_stream_monitoring_thread():
 	global	video_stream_proc
 	while not Done:
+		print('Checking video stream is alive ('+str(video_stream_proc)+')')
 		if video_stream_proc:
 			processRunning = video_stream_proc.poll() is None
 			if not processRunning:
@@ -246,12 +280,15 @@ def video_stream_monitoring_thread():
 
 # Several threads run asynchronously to handle various things
 all_threads = []
-all_threads.append( {'name=headlight', 'target'=PWM_headlight_update_thread   , 'proc'=None})
-all_threads.append( {'name=left'     , 'target'=PWM_left_update_thread        , 'proc'=None})
-all_threads.append( {'name=right'    , 'target'=PWM_right_update_thread       , 'proc'=None})
-all_threads.append( {'name=display'  , 'target'=onboard_display_update_thread , 'proc'=None})
-all_threads.append( {'name=videomon' , 'target'=video_stream_monitoring_thread, 'proc'=None})
+all_threads.append( {'name':'headlight', 'target':PWM_headlight_update_thread   , 'proc':None})
+all_threads.append( {'name':'left'     , 'target':PWM_left_update_thread        , 'proc':None})
+all_threads.append( {'name':'right'    , 'target':PWM_right_update_thread       , 'proc':None})
+all_threads.append( {'name':'display'  , 'target':onboard_display_update_thread , 'proc':None})
+all_threads.append( {'name':'videomon' , 'target':video_stream_monitoring_thread, 'proc':None})
 
+#------------------------------
+# StartAllThreads
+#------------------------------
 def StartAllThreads():
 	global last_tread_thread_start_time
 	for t in all_threads:
@@ -260,6 +297,9 @@ def StartAllThreads():
 		t['proc'].start()
 	last_tread_thread_start_time = time.time()
 
+#------------------------------
+# StopAllThreads
+#------------------------------
 def StopAllThreads():
 	print('Stopping all threads ...')
 	Done = True
@@ -267,17 +307,7 @@ def StopAllThreads():
 		print('  Joining thread for '+t['name'])
 		t['proc'].join()
 
-#pwm_headlight_thread  = threading.Thread( target=PWM_headlight_update_thread  )
-#pwm_left_thread  = threading.Thread( target=PWM_left_update_thread  )
-#pwm_right_thread = threading.Thread( target=PWM_right_update_thread )
-#onboard_display_thread = threading.Thread( target=onboard_display_update_thread )
-#video_stream_thread = threading.Thread( target=video_stream_monitoring_thread )
-#pwm_headlight_thread.start()
-#pwm_left_thread.start()
-#pwm_right_thread.start()
-#onboard_display_thread.start()
-#video_stream_thread.start()
-#last_tread_thread_start_time = time.time()
+
 
 #=============================================================================
 
@@ -287,22 +317,9 @@ socket.bind("tcp://*:%s" % port)
 
 print("Listening on port " + port + " ...")
 
-# Video is streamed by separate process
-video_stream_proc = None
-
-#------------------------------
-# StartVideoStream
-#------------------------------
-def StartVideoStream():
-	global video_stream_proc
-	subprocess.run('killall -9 libcamera-vid'.split()) # make sure stream is not running from someone else and don't be nice about it!
-#	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.0:7140'.split()
-	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 480 --framerate 12 -o tcp://0.0.0.0:7140'.split()
-	print('Starting video stream with command:')
-	print('   ' + ' '.join(cmd))
-	video_stream_proc = subprocess.Popen( cmd )
 
 StartVideoStream()
+StartAllThreads()
 
 
 # Server loop
