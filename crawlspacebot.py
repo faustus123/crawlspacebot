@@ -305,7 +305,8 @@ def onboard_display_update_thread():
 # video_stream_monitoring_thread
 #------------------------------
 def video_stream_monitoring_thread():
-	global	video_stream_proc
+	global video_stream_proc
+	global Done
 	while not Done:
 		if video_stream_proc:
 			processRunning = video_stream_proc.poll() is None
