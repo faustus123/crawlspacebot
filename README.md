@@ -5,10 +5,10 @@ Code for small robot built to examine my crawlspace
 
 On the mac, make sure the ffmpeg and zmq packages are installed
 ~~~
-brew install ffmpeg
+brew install ffmpeg python-tk
 python3 -m venv venv
 source venv/bin/activate.csh
-pip3 install zmq
+pip3 install zmq ffpyplayer
 ~~~
 
 

@@ -115,15 +115,53 @@ disp.display()
 
 # Video is streamed by separate process
 video_stream_proc = None
+video_mode = "1296x972"  # "1296x972", "648x486"
 
 #------------------------------
 # StartVideoStream
+#
+# The camera has multiple modes it can capture in (see result below).
+# The images may also be delivered in a different format than they are
+# captured. I had problems using mode 2592x1944 and sending the full
+# sized images, but capturing in that mode and sending 1296x972 seemed
+# to work fine.
+#
+# There are also multiple codecs. I tested the h264 and mjpeg codecs
+# with mode 1296:972 and monitored the bandwith with iftop. The h264
+# took up less bandwidth (~1.8Mb vs. ~2.8Mb) with no noticable visual
+# difference. (This was at 6 famres/sec). The h264 codec also took up
+# < 10% of CPU while mjpeg took up >100%.
+#
+# The current default setting uses:
+#  Capture size: 2592x1944
+#     Send size: 1296x972
+#     framerate: 10fps
+#         Codec: h264
+#
+#  libcamera-vid CPU: ~15%
+#    total bandwidth: ~3.5Mb
+#
+#
+# pi@raspberrypi:~ $ libcamera-vid --list-cameras
+# Available cameras
+# -----------------
+# 0 : ov5647 [2592x1944] (/base/soc/i2c0mux/i2c@1/ov5647@36)
+#    Modes: 'SGBRG10_CSI2P' : 640x480 [58.92 fps - (16, 0)/2560x1920 crop]
+#                             1296x972 [43.25 fps - (0, 0)/2592x1944 crop]
+#                             1920x1080 [30.62 fps - (348, 434)/1928x1080 crop]
+#                             2592x1944 [15.63 fps - (0, 0)/2592x1944 crop]
 #------------------------------
 def StartVideoStream():
 	global video_stream_proc
+	global video_mode
+	
+	(width,height) = video_mode.split("x")
+	
 	subprocess.run('killall -9 libcamera-vid'.split()) # make sure stream is not running from someone else and don't be nice about it!
 #	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.0:7140'.split()
-	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 --framerate 12 -o tcp://0.0.0.0:7140'.split()
+#	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 480 --framerate 12 -o tcp://0.0.0.0:7140'.split()
+#	cmd = 'libcamera-vid -t 0 -n --listen --mode 2592:1944 --width 1296 --height 972 --codec h264 --flush --framerate 10 -o tcp://0.0.0.0:7140'.split()
+	cmd = 'libcamera-vid -t 0 -n --listen --mode 2592:1944 --width {} --height {} --codec h264 --flush --framerate 10 -o tcp://0.0.0.0:7140'.format(width, height).split()
 	print('Starting video stream with command:')
 	print('   ' + ' '.join(cmd))
 	video_stream_proc = subprocess.Popen( cmd )
@@ -316,7 +354,6 @@ socket = context.socket(zmq.REP)
 socket.bind("tcp://*:%s" % port)
 
 print("Listening on port " + port + " ...")
-
 
 StartVideoStream()
 StartAllThreads()
