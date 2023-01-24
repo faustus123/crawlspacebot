@@ -231,9 +231,13 @@ def PWM_right_update_thread():
 def PWM_headlight_update_thread():
 	global headlight_power
 	while not Done:
+		print('{}'.format(1))
 		if not headlight_on:
+			print('{}'.format(2))
 			GPIO.output(pinHeadlight, False)
+			print('{}'.format(3))
 			time.sleep( period )
+			print('{}'.format(4))
 			continue
 
 		if headlight_power > 1.0 : headlight_power = 1.0
@@ -241,10 +245,14 @@ def PWM_headlight_update_thread():
 		duty = headlight_power
 
 		GPIO.output(pinHeadlight, True)
-		time.sleep( period*duty );
+		print('{}'.format(5))
+		time.sleep( period*duty );		print('{}'.format(1))
 		if duty < 1.0:
+			print('{}'.format(6))
 			GPIO.output(pinHeadlight, False)
+			print('{}'.format(7))
 			time.sleep( period*(1.0-duty) );
+			print('{}'.format(8))
 
 
 #------------------------------
