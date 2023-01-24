@@ -10,7 +10,7 @@ import os
 import subprocess
 import hid
 
-host = "192.168.1.240"
+host = "192.168.1.227"
 port = "71400"
 
 if len(sys.argv) > 1:
