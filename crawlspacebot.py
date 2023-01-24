@@ -115,7 +115,8 @@ disp.display()
 
 # Video is streamed by separate process
 video_stream_proc = None
-video_mode = "1296x972"  # "1296x972", "648x486"
+video_modes = ["324x243", "648x486", "1296x972"]
+video_mode_idx = 0
 
 #------------------------------
 # StartVideoStream
@@ -153,8 +154,9 @@ video_mode = "1296x972"  # "1296x972", "648x486"
 #------------------------------
 def StartVideoStream():
 	global video_stream_proc
-	global video_mode
+	global video_modes, video_mode_idx
 	
+	video_mode = video_modes[video_mode_idx % len(video_modes)]
 	(width,height) = video_mode.split("x")
 	
 	subprocess.run('killall -9 libcamera-vid'.split()) # make sure stream is not running from someone else and don't be nice about it!
@@ -388,6 +390,12 @@ while not Done:
 			video_stream_proc = None
 		else:
 			mess = 'Video stream not started. Stop request ignored'
+
+	elif command.startswith('change_video_mode'):
+		video_mode_idx += 1
+		video_mode = video_modes[video_mode_idx % len(video_modes)]
+		print('Restarting video stream in mode: '+video_mode)
+		StartVideoStream()
 
 	elif command.startswith('set_camera_angles'):
 		[angleH, angleV] = command.split()[1:]
