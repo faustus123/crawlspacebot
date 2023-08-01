@@ -46,10 +46,10 @@ Here are some settings to use:
   NOTE: I don't actually need both code and arduino. Either will work.
   If using code, install the C++ and PlatformIO extensions.
 
-  sudo apt install code
-  sudo pip install zmq
-  sudo pip install Adafruit_GPIO
-  sudo pip install Adafruit_SSD1306
+  sudo apt install code<br>
+  sudo pip install zmq<br>
+  sudo pip install Adafruit_GPIO<br>
+  sudo pip install Adafruit_SSD1306<br>
 
 - Checkout the custom software in the home directory of the pi account:
 
