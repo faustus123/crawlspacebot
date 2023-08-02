@@ -9,18 +9,17 @@ Use Raspberry Pi Imager program and select:
 
 Raspberry Pi OS (32-bit)
 
-You'll need to connect a keyboard, mouse, and monitor to
-get the WiFi network setup. Plug everything in and fire it up.
-Here are some settings to use:
+Go to the settings and enter username/password, WiFi
+SSID/password, locale, timezone, etc. This will save 
+you from having to connect to the external monitor,
+keyboard, mouse to set this stuff up.
 
-- I flipped the switch to make reduced desktop size so it
-  fits better on the TV. The picture is still clipped, but
-  it is more usable.
+Once the microSD is written to, put it in the RPi and
+boot it up.
 
-- I still use the old default user=pi pass=raspberry values
-  and just ignore the complaints
-  
-- After it does the initial updates and reboots, run
+You will need to look at the WiFi router to find the
+IP address of the RPi. Then you should be able to 
+log into it via ssh. Run:
 
   "sudo raspi-config"
 
@@ -46,7 +45,6 @@ Here are some settings to use:
   NOTE: I don't actually need both code and arduino. Either will work.
   If using code, install the C++ and PlatformIO extensions.
 
-  sudo apt install code<br>
   sudo pip install zmq<br>
   sudo pip install Adafruit_GPIO<br>
   sudo pip install Adafruit_SSD1306<br>
@@ -73,7 +71,9 @@ pip3 install zmq ffpyplayer
 
 
 ### Video stream from Raspberry Pi to mac
-On raspberry Pi:
+The `crawlspacebot.py` script that is automatically run by the
+crontab above will automatically start the video stream server
+with a command similar to this:
 ~~~
 libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.0:8888
 ~~~
