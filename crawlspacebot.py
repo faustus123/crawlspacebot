@@ -229,15 +229,15 @@ def PWM_right_update_thread():
 # PWM_headlight_update_thread
 #------------------------------
 def PWM_headlight_update_thread():
-	global headlight_power
+	global headlight_power, Done
 	while not Done:
-		#print('{}'.format(1))
+		#print('{} Done={}'.format(1, Done))
 		if not headlight_on:
-			#`print('{}'.format(2))
+			#print('{} Done={}'.format(2, Done))
 			GPIO.output(pinHeadlight, False)
-			#print('{}'.format(3))
+			#print('{} Done={}'.format(3, Done))
 			time.sleep( period )
-			#print('{}'.format(4))
+			#print('{} Done={}'.format(4, Done))
 			continue
 
 		if headlight_power > 1.0 : headlight_power = 1.0
@@ -246,7 +246,8 @@ def PWM_headlight_update_thread():
 
 		GPIO.output(pinHeadlight, True)
 		#print('{}'.format(5))
-		time.sleep( period*duty );		print('{}'.format(1))
+		time.sleep( period*duty )
+		#print('{}'.format(6))
 		if duty < 1.0:
 			#print('{}'.format(6))
 			GPIO.output(pinHeadlight, False)
@@ -338,7 +339,8 @@ all_threads.append( {'name':'videomon' , 'target':video_stream_monitoring_thread
 # StartAllThreads
 #------------------------------
 def StartAllThreads():
-	global last_tread_thread_start_time
+	global last_tread_thread_start_time, Done
+	Done = False
 	for t in all_threads:
 		t['proc'] = threading.Thread( target=t['target'] )
 		print('Starting thread for '+t['name'])
@@ -349,6 +351,7 @@ def StartAllThreads():
 # StopAllThreads
 #------------------------------
 def StopAllThreads():
+	global Done
 	print('Stopping all threads ...')
 	Done = True
 	for t in all_threads:
