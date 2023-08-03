@@ -121,10 +121,10 @@ disp.display()
 video_stream_proc = None
 video_modes = ["324x243", "648x486", "1296x972"]
 video_modes = [
-	"--mode 640:480   --codec mjpeg --framerate 10",
-	"--mode 1296:972  --codec mjpeg --framerate 10",
-	"--mode 1920:1080 --codec mjpeg --framerate 10",
-	"--mode 2592:1944 --codec mjpeg --framerate 10"
+	"--mode 640:480   --codec mjpeg --framerate 10 --hflip --vflip",
+	"--mode 1296:972  --codec mjpeg --framerate 10 --hflip --vflip",
+	"--mode 1920:1080 --codec mjpeg --framerate 10 --hflip --vflip",
+	"--mode 2592:1944 --codec mjpeg --framerate 10 --hflip --vflip"
 	]
 video_mode_idx = 0
 
