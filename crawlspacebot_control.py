@@ -9,6 +9,7 @@ import sys
 import os
 import subprocess
 import hid
+from datetime import datetime
 
 host = "192.168.1.227"
 port = "71400"
@@ -30,6 +31,7 @@ headlightPower = 0.5
 emergency_pusher_parked = -0.89
 emergency_pusher_full   = 0.65
 emergency_pusher_angle  = emergency_pusher_parked
+last_move_command_send_time = datetime.now()
 
 def LogitechReportToState( report ):
 	state = {}
@@ -122,6 +124,10 @@ else:
 		report = gamepad.read(512)
 		if report:
 			state = LogitechReportToState(report)
+		else:
+			#state = None
+			time.sleep(0.050)
+			#print('Unable to get controller state')
 		if state:
 			
 			# Camera angle
@@ -217,9 +223,12 @@ else:
 				treadL = treadL / 4.0
 			
 			# If tread power has changed since last time, send new values.
-			if (last_treadL!=treadL) or (last_treadR!=treadR):
+			time_since_last_move = (datetime.now() - last_move_command_send_time).total_seconds()
+			print('time_since_last_move={}'.format(time_since_last_move))
+			if (last_treadL!=treadL) or (last_treadR!=treadR) or (time_since_last_move>=1.0):
 				# If tread power for both is zero, tell PWM to stop
 				# Otherwise send new motor values
+				last_move_command_send_time = datetime.now()
 				if (treadL==0.0) and (treadR==0.0):
 					socket.send_string('stop_motors')
 					message = socket.recv_string()
