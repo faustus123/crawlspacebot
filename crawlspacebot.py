@@ -9,6 +9,7 @@ import time
 import sys
 import subprocess
 import threading
+from datetime import datetime
 
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
@@ -60,6 +61,9 @@ pin_IN3 = 25 # brown   <--|
 pin_IN4 = 12 # red        |-- Right
 pin_ENB = 16 # orange  <--|
 
+
+# Time of last command received (used for deadman-switch)
+last_received_command_time = datetime.now()
 
 freq = 2000  # cycle frequency
 period = 1.0/freq
@@ -116,6 +120,12 @@ disp.display()
 # Video is streamed by separate process
 video_stream_proc = None
 video_modes = ["324x243", "648x486", "1296x972"]
+video_modes = [
+	"--mode 640:480   --codec mjpeg --framerate 10",
+	"--mode 1296:972  --codec mjpeg --framerate 10",
+	"--mode 1920:1080 --codec mjpeg --framerate 10",
+	"--mode 2592:1944 --codec mjpeg --framerate 10"
+	]
 video_mode_idx = 0
 
 #------------------------------
@@ -157,13 +167,14 @@ def StartVideoStream():
 	global video_modes, video_mode_idx
 	
 	video_mode = video_modes[video_mode_idx % len(video_modes)]
-	(width,height) = video_mode.split("x")
+#	(width,height) = video_mode.split("x")
 	
 	subprocess.run('killall -9 libcamera-vid'.split()) # make sure stream is not running from someone else and don't be nice about it!
 #	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 0 -o tcp://0.0.0.0:7140'.split()
 #	cmd = 'libcamera-vid -t 0 -n --listen --mode 1920:1080:8:U --codec h264 --flush --lores-width 480 --framerate 12 -o tcp://0.0.0.0:7140'.split()
 #	cmd = 'libcamera-vid -t 0 -n --listen --mode 2592:1944 --width 1296 --height 972 --codec h264 --flush --framerate 10 -o tcp://0.0.0.0:7140'.split()
-	cmd = 'libcamera-vid -t 0 -n --listen --mode 2592:1944 --width {} --height {} --codec h264 --flush --framerate 10 -o tcp://0.0.0.0:7140'.format(width, height).split()
+#	cmd = 'libcamera-vid -t 0 -n --listen --mode 2592:1944 --width {} --height {} --codec h264 --flush --framerate 10 -o tcp://0.0.0.0:7140'.format(width, height).split()
+	cmd = 'libcamera-vid -t 0 -n --listen --flush=1 {} -o tcp://0.0.0.0:7140'.format(video_mode).split()
 	print('Starting video stream with command:')
 	print('   ' + ' '.join(cmd))
 	video_stream_proc = subprocess.Popen( cmd )
@@ -173,7 +184,13 @@ def StartVideoStream():
 # PWM_left_update_thread
 #------------------------------
 def PWM_left_update_thread():
+	global motors_stopped, Done
 	while not Done:
+		time_since_last_command = (datetime.now() - last_received_command_time).total_seconds()
+		if (time_since_last_command>1.0) and (not motors_stopped):
+			print('No commands recived for at least 1 second. Stopping motors')
+			motors_stopped = True
+		
 		if motors_stopped:
 			GPIO.output(pin_IN1, False)
 			GPIO.output(pin_IN2, False)
@@ -377,6 +394,7 @@ while not Done:
 	#  Wait for next request from client
 	command = socket.recv_string()
 	print("Received request: " + command)
+	last_received_command_time = datetime.now()
 	if command.startswith('Hello'):
 		mess = "Hola'!"
 
