@@ -9,6 +9,7 @@ import time
 import sys
 import subprocess
 import threading
+from datetime import datetime
 
 import Adafruit_GPIO.SPI as SPI
 import Adafruit_SSD1306
@@ -60,6 +61,9 @@ pin_IN3 = 25 # brown   <--|
 pin_IN4 = 12 # red        |-- Right
 pin_ENB = 16 # orange  <--|
 
+
+# Time of last command received (used for deadman-switch)
+last_received_command_time = datetime.now()
 
 freq = 2000  # cycle frequency
 period = 1.0/freq
@@ -180,7 +184,13 @@ def StartVideoStream():
 # PWM_left_update_thread
 #------------------------------
 def PWM_left_update_thread():
+	global motors_stopped, Done
 	while not Done:
+		time_since_last_command = (datetime.now() - last_received_command_time).total_seconds()
+		if (time_since_last_command>1.0) and (not motors_stopped):
+			print('No commands recived for at least 1 second. Stopping motors')
+			motors_stopped = True
+		
 		if motors_stopped:
 			GPIO.output(pin_IN1, False)
 			GPIO.output(pin_IN2, False)
@@ -384,6 +394,7 @@ while not Done:
 	#  Wait for next request from client
 	command = socket.recv_string()
 	print("Received request: " + command)
+	last_received_command_time = datetime.now()
 	if command.startswith('Hello'):
 		mess = "Hola'!"
 
