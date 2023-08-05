@@ -45,6 +45,7 @@ log into it via ssh. Run:
   NOTE: I don't actually need both code and arduino. Either will work.
   If using code, install the C++ and PlatformIO extensions.
 
+  sudo apt install -y nedit<br>
   sudo pip install zmq<br>
   sudo pip install Adafruit_GPIO<br>
   sudo pip install Adafruit_SSD1306<br>
